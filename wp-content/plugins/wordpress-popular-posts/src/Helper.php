@@ -262,18 +262,20 @@ class Helper {
     public static function truncate($text = '', $length = 25, $truncate_by_words = false, $more = '...')
     {
         if ( '' !== $text ) {
+            $charset = get_bloginfo('charset');
+
             // Truncate by words
             if ( $truncate_by_words ) {
                 $words = explode(" ", $text, $length + 1);
 
                 if ( count($words) > $length ) {
                     array_pop($words);
-                    $text = rtrim(implode(" ", $words), ",.") . " {$more}";
+                    $text = rtrim(implode(" ", $words), ",.") . $more;
                 }
             }
             // Truncate by characters
-            elseif ( strlen($text) > $length ) {
-                $text = rtrim(mb_substr($text, 0, $length , get_bloginfo('charset')), " ,.") . $more;
+            elseif ( mb_strlen($text, $charset) > $length ) {
+                $text = rtrim(mb_substr($text, 0, $length , $charset), " ,.") . $more;
             }
         }
 
@@ -370,107 +372,5 @@ class Helper {
         preg_match('/[^\?]+\.(jpg|JPG|jpe|JPE|jpeg|JPEG|gif|GIF|png|PNG)/', $image_url, $matches);
 
         return ( is_array($matches) && ! empty($matches) ) ? $matches : false;
-    }
-
-    /**
-     * Removes unsafe HTML tags / attributes.
-     *
-     * @since   5.4.0
-     * @param   string
-     * @return  string
-     */
-    static function remove_unsafe_html($string)
-    {
-        $html = trim($string);
-
-        if ( $html ) {
-            $unsafe_tags = [
-                'html',
-                'head',
-                'meta',
-                'link',
-                'title',
-                'body',
-                'canvas',
-                'pre',
-                'iframe',
-                'frame',
-                'frameset',
-                'object',
-                'embed',
-                'script',
-                'applet',
-                'form',
-                'input',
-                'textarea',
-                'button'
-            ];
-
-            $doc = new \DOMDocument();
-
-            /**
-             * @TODO
-             *
-             * We should be able to just use:
-             * $doc->loadHTML($html, LIBXML_NOWARNING | LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
-             * and remove the lines below once the minimum required PHP version is 7.1.4 or higher
-             *
-             * @see https://www.php.net/ChangeLog-7.php#7.1.4, https://stackoverflow.com/q/41844778/9131961
-             */
-
-            # clear errors list if any
-            libxml_clear_errors();
-            # use internal errors, don't spill out warnings
-            $previous = libxml_use_internal_errors(true);
-
-            $doc->loadHTML($html, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
-
-            $elements = $doc->getElementsByTagname('*');
-
-            for ( $i = $elements->length; --$i >= 0; ) {
-                $element = $elements->item($i);
-
-                // Remove unsafe tags
-                if ( in_array($element->tagName, $unsafe_tags) ) {
-                    $element->parentNode->removeChild($element);
-                }
-                else {
-                    // Remove unsafe attributes (onclick, onerror, etc.)
-                    foreach (iterator_to_array($element->attributes) as $name => $attribute) {
-                        if ( 0 === substr_compare($name, 'on', 0, 2, true) ) {
-                            $element->removeAttribute($name);
-                        }
-                    }
-
-                    // Remove <img> tag if src is not an image URL
-                    if ( 'img' == $element->tagName ) {
-                        $src = trim($element->getAttribute('src'));
-
-                        if ( ! Helper::is_image_url($src) ) {
-                            $element->parentNode->removeChild($element);
-                        }
-                    }
-                }
-            }
-
-            $html = $doc->saveHTML();
-
-            /**
-             * @TODO
-             *
-             * We should be able to just use:
-             * $doc->loadHTML($html, LIBXML_NOWARNING | LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
-             * and remove the lines below once the minimum required PHP version is 7.1.4 or higher
-             *
-             * @see https://www.php.net/ChangeLog-7.php#7.1.4, https://stackoverflow.com/q/41844778/9131961
-             */
-
-            # clear errors list if any
-            libxml_clear_errors();
-            # restore previous behavior
-            libxml_use_internal_errors($previous);
-        }
-
-        return $html;
     }
 }

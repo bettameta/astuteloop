@@ -71,44 +71,19 @@ class Front {
     }
 
     /**
-     * 
+     * Inserts CSS related to the loading animation into <head>
+     *
+     * @since   5.3.0
      */
     public function inline_loading_css()
     {
-        ?>
-        <style>
-            @-webkit-keyframes bgslide {
-                from {
-                    background-position-x: 0;
-                }
-                to {
-                    background-position-x: -200%;
-                }
-            }
+        $wpp_insert_loading_animation_styles = apply_filters('wpp_insert_loading_animation_styles', true);
 
-            @keyframes bgslide {
-                    from {
-                        background-position-x: 0;
-                    }
-                    to {
-                        background-position-x: -200%;
-                    }
-            }
-
-            .wpp-widget-placeholder {
-                margin: 0 auto;
-                width: 60px;
-                height: 3px;
-                background: #dd3737;
-                background: -webkit-gradient(linear, left top, right top, from(#dd3737), color-stop(10%, #571313), to(#dd3737));
-                background: linear-gradient(90deg, #dd3737 0%, #571313 10%, #dd3737 100%);
-                background-size: 200% auto;
-                border-radius: 3px;
-                -webkit-animation: bgslide 1s infinite linear;
-                animation: bgslide 1s infinite linear;
-            }
-        </style>
-        <?php
+        if ( $wpp_insert_loading_animation_styles ) :
+            ?>
+            <style id="wpp-loading-animation-styles">@-webkit-keyframes bgslide{from{background-position-x:0}to{background-position-x:-200%}}@keyframes bgslide{from{background-position-x:0}to{background-position-x:-200%}}.wpp-widget-placeholder,.wpp-widget-block-placeholder{margin:0 auto;width:60px;height:3px;background:#dd3737;background:linear-gradient(90deg,#dd3737 0%,#571313 10%,#dd3737 100%);background-size:200% auto;border-radius:3px;-webkit-animation:bgslide 1s infinite linear;animation:bgslide 1s infinite linear}</style>
+            <?php
+        endif;
     }
 
     /**
@@ -146,6 +121,7 @@ class Front {
             'sampling_active' => (int) $this->config['tools']['sampling']['active'],
             'sampling_rate' => (int) $this->config['tools']['sampling']['rate'],
             'ajax_url' => esc_url_raw(rest_url('wordpress-popular-posts/v1/popular-posts')),
+            'api_url' => esc_url_raw(rest_url('wordpress-popular-posts')),
             'ID' => (int) $is_single,
             'token' => wp_create_nonce('wp_rest'),
             'lang' => function_exists('PLL') ? $this->translate->get_current_language() : 0,
@@ -465,6 +441,15 @@ class Front {
         $shortcode_content = '';
         $cached = false;
 
+        // is there a title defined by user?
+        if (
+            ! empty($header)
+            && ! empty($header_start)
+            && ! empty($header_end)
+        ) {
+            $shortcode_content .= htmlspecialchars_decode($header_start, ENT_QUOTES) . $header . htmlspecialchars_decode($header_end, ENT_QUOTES);
+        }
+
         // Return cached results
         if ( $this->config['tools']['cache']['active'] ) {
 
@@ -504,7 +489,21 @@ class Front {
 
         $shortcode_content .= $this->output->get_output();
 
-        return $shortcode_content;
+        // Sanitize and return shortcode HTML
+        $allowed_tags = wp_kses_allowed_html('post');
+
+        if ( isset($allowed_tags['form']) ) {
+            unset($allowed_tags['form']);
+        }
+
+        if ( ! empty($shortcode_ops['theme']['name']) ) {
+            $allowed_tags['style'] = [
+                'id' => 1,
+                'nonce' => 1,
+            ];
+        }
+
+        return wp_kses($shortcode_content, $allowed_tags);
     }
 
 }

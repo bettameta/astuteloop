@@ -137,17 +137,20 @@ class Widget extends \WP_Widget {
             (array) $instance
         );
 
-        $markup = ( $instance['markup']['custom_html'] || has_filter('wpp_custom_html') || has_filter('wpp_post') )
-              ? 'custom'
-              : 'regular';
-
         echo "\n" . $before_widget . "\n";
 
         // Has user set a title?
         if ( '' != $instance['title'] ) {
-            if ( ! $instance['markup']['custom_html'] ) {
-                $instance['markup']['title-start'] = $before_title;
-                $instance['markup']['title-end'] = $after_title;
+            $title = apply_filters('widget_title', $instance['title'], $instance, $this->id_base);
+
+            if (
+                $instance['markup']['custom_html']
+                && $instance['markup']['title-start'] != ""
+                && $instance['markup']['title-end'] != ""
+            ) {
+                echo htmlspecialchars_decode($instance['markup']['title-start'], ENT_QUOTES) . $title . htmlspecialchars_decode($instance['markup']['title-end'], ENT_QUOTES);
+            } else {
+                echo $before_title . $title . $after_title;
             }
         }
 

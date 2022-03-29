@@ -793,7 +793,8 @@ body {
 }
 .home .content {
 	max-width: 600px;
-	background: #ffffff;
+	background: rgb(255, 255, 255, 0.8);
+	
 	padding: 3em;
 }
 .home .main-content {
